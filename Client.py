@@ -4,8 +4,8 @@ import mysql.connector
 class Client:
     def __init__(self):
         self.host="localhost"
-        self.user="root"            #enter username
-        self.passwd=""              #enter password
+        self.user="root"            # enter username
+        self.passwd=""    # enter password
         self.db="Project"
 
     def createDBConn(self):
@@ -115,7 +115,7 @@ class Client:
         db.commit()
         self.closeDBConn(db)
 
-        print "{personOneID} and {personTwoID} are now friends!".format(personOne=personOneID, personTwo=personTwoID)
+        print "{personOneID} and {personTwoID} are now friends!".format(personOneID=personOneID, personTwoID=personTwoID)
 
     def respondToPost(self, personID, postID, topicID, body):
         db = self.createDBConn()
@@ -154,7 +154,7 @@ class Client:
 
         print "Friend group {groupName} was created!".format(groupName=groupName)
 
-    def addToGroup(self, groupID, personID):
+    def joinGroup(self, groupID, personID):
         db = self.createDBConn()
         cursor = db.cursor()
 
@@ -204,3 +204,95 @@ class Client:
         persons = [row[0] for row in cursor]
         self.closeDBConn(db)
         return persons
+
+    def getRelatedPosts(self, personID):
+        db = self.createDBConn()
+        cursor = db.cursor()
+
+        cursor.execute("""
+            SELECT 
+                Po.postID,
+                T.topic,
+                CONCAT_WS(" ", Pe.firstName, Pe.lastName),
+                Po.body
+            FROM (SELECT *
+            FROM Post
+            WHERE
+                topicID IN (SELECT topicID FROM FollowedTopic WHERE personID = {})
+                OR personID IN (
+                    SELECT personOne as personID from Friend WHERE personTwo = {} 
+                    UNION ALL
+                    SELECT personTwo as personID from Friend WHERE personOne = {})) AS Po
+            LEFT JOIN Person as Pe ON Pe.personID = Po.personID
+            LEFT JOIN Topic as T ON T.topicID = Po.topicID
+        """.format(personID, personID, personID))
+
+        for row in cursor:
+            print "Post #: " + str(row[0])
+            print "Topic: " + row[1]
+            print "User: " + row[2]
+            print row[3] + '\n\n'
+
+        self.closeDBConn(db)
+
+    def getTopics(self):
+        db = self.createDBConn()
+        cursor = db.cursor()
+
+        cursor.execute("""
+            SELECT * FROM Topic
+        """)
+
+        for row in cursor:
+            print "{topicID} - {topic}".format(topicID=row[0], topic=row[1])
+
+        self.closeDBConn(db)
+
+    def getPostTopic(self, postID):
+        db = self.createDBConn()
+        cursor = db.cursor()
+
+        cursor.execute("""
+            SELECT topicID FROM Post
+            WHERE postID = {}
+        """.format(postID))
+        for row in cursor:
+            topicID = row[0]
+
+        self.closeDBConn(db)
+        
+        return topicID
+
+    def getGroups(self):
+        db = self.createDBConn()
+        cursor = db.cursor()
+
+        cursor.execute("""
+            SELECT * FROM FriendGroup
+        """)
+
+        for row in cursor:
+            print "{groupID} - {groupName}".format(groupID=row[0], groupName=row[1])
+
+        self.closeDBConn(db)
+
+    def getPotentialFriends(self, personID):
+        db = self.createDBConn()
+        cursor = db.cursor()
+
+        cursor.execute("""
+            SELECT
+                personID,
+                CONCAT_WS(" ", firstName, lastName)
+            FROM Person
+            WHERE personID NOT IN (
+                SELECT personOne as personID from Friend WHERE personTwo = {} 
+                UNION ALL
+                SELECT personTwo as personID from Friend WHERE personOne = {})
+                AND personID <> {}
+        """.format(personID, personID, personID))
+
+        for row in cursor:
+            print "{groupID} - {groupName}".format(groupID=row[0], groupName=row[1])
+
+        self.closeDBConn(db)
