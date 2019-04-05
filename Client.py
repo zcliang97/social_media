@@ -180,6 +180,19 @@ class Client:
 
         print "{personID} started following {topicID}!".format(personID=personID, topicID=topicID)
 
+    def reactToPost(self, postID, personID, reactTypeID):
+        db = self.createDBConn()
+        cursor = db.cursor()
+
+        cursor.execute("""
+            INSERT INTO React(postID, personID, reactTypeID)
+            VALUES ({postID}, {personID}, {reactTypeID})
+        """.format(postID=postID, personID=personID, reactTypeID=reactTypeID))
+        db.commit()
+        self.closeDBConn(db)
+
+        print "{personID} reacted to {postID} with reaction {reactTypeID}!".format(personID=personID, postID=postID, reactTypeID=reactTypeID)
+
     def getReactTypes(self):
         db = self.createDBConn()
         cursor = db.cursor()
@@ -205,7 +218,23 @@ class Client:
         self.closeDBConn(db)
         return persons
 
+    def getReadPosts(self, personID):
+        db = self.createDBConn()
+        cursor = db.cursor()
+
+        # get read posts for personID
+        cursor.execute("""
+            SELECT postID FROM ReadPost WHERE personID = {}
+        """.format(personID))
+        readPosts = [row[0] for row in cursor]
+        self.closeDBConn(db)
+
+        return readPosts
+
     def getRelatedPosts(self, personID):
+        # get all the read posts by the personID
+        readPosts = self.getReadPosts(personID)
+
         db = self.createDBConn()
         cursor = db.cursor()
 
@@ -227,11 +256,62 @@ class Client:
             LEFT JOIN Topic as T ON T.topicID = Po.topicID
         """.format(personID, personID, personID))
 
+        readInserts = []
         for row in cursor:
             print "Post #: " + str(row[0])
             print "Topic: " + row[1]
             print "User: " + row[2]
             print row[3] + '\n\n'
+            if row[0] not in readPosts:
+                readInserts.append("""
+                    INSERT INTO ReadPost(postID, personID)
+                    VALUES ({postID}, {personID})
+                """.format(postID=row[0], personID=personID))
+        
+        for insert in readInserts:
+            cursor.execute(insert)
+        db.commit()
+
+        self.closeDBConn(db)
+
+    def getUnreadRelatedPosts(self, personID):
+        db = self.createDBConn()
+        cursor = db.cursor()
+
+        cursor.execute("""
+            SELECT 
+                Po.postID,
+                T.topic,
+                CONCAT_WS(" ", Pe.firstName, Pe.lastName),
+                Po.body
+            FROM (SELECT *
+            FROM Post
+            WHERE
+                (topicID IN (SELECT topicID FROM FollowedTopic WHERE personID = {})
+                OR personID IN (
+                    SELECT personOne as personID from Friend WHERE personTwo = {} 
+                    UNION ALL
+                    SELECT personTwo as personID from Friend WHERE personOne = {}))
+                AND
+                (postID NOT IN (SELECT postID FROM ReadPost WHERE personID = {}))) AS Po
+            LEFT JOIN Person as Pe ON Pe.personID = Po.personID
+            LEFT JOIN Topic as T ON T.topicID = Po.topicID
+        """.format(personID, personID, personID, personID))
+        
+        readInserts = []
+        for row in cursor:
+            print "Post #: " + str(row[0])
+            print "Topic: " + row[1]
+            print "User: " + row[2]
+            print row[3] + '\n\n'
+            readInserts.append("""
+                INSERT INTO ReadPost(postID, personID)
+                VALUES ({postID}, {personID})
+            """.format(postID=row[0], personID=personID))
+
+        for insert in readInserts:
+            cursor.execute(insert)
+        db.commit()
 
         self.closeDBConn(db)
 

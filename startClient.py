@@ -39,54 +39,63 @@ def login(client):
 def main(client, currentUser):
     while True:
         print "===== View new posts         [0]"
-        print "===== Respond to post        [1]"
-        print "===== Create topic           [2]"
-        print "===== Create subtopic        [3]"
-        print "===== Create friend group    [4]"
-        print "===== Join friend group      [5]"
-        print "===== Create post            [6]"
-        print "===== Add friend             [7]"
-        print "===== Follow topic/subtopic  [8]"
-        print "===== Exit                   [9]"
+        print "===== View all posts         [1]"
+        print "===== Respond to post        [2]"
+        print "===== React to post          [3]"
+        print "===== Create topic           [4]"
+        print "===== Create subtopic        [5]"
+        print "===== Create friend group    [6]"
+        print "===== Join friend group      [7]"
+        print "===== Create post            [8]"
+        print "===== Add friend             [9]"
+        print "===== Follow topic/subtopic  [10]"
+        print "===== Exit                   [11]"
         action = raw_input()
 
         # ACTIONS
         if action == "0":
-            client.getRelatedPosts(currentUser)
+            client.getUnreadRelatedPosts(currentUser)
         elif action == "1":
+            client.getRelatedPosts(currentUser)
+        elif action == "2":
             postID = raw_input("What is the post # you are responding to? \n")
             topicID = client.getPostTopic(postID)
             body = raw_input("What is your response? \n")
             client.respondToPost(currentUser, postID, topicID, body)
-        elif action == "2":
+        elif action == "3":
+            client.getReactTypes()
+            postID = raw_input("What post would you like to react to? \n")
+            reactTypeID = raw_input("What reaction would you like to use? \n")
+            client.reactToPost(postID, currentUser, reactTypeID)
+        elif action == "4":
             topic = raw_input("What is the topic? \n")
             client.createTopic(topic)
-        elif action == "3":
+        elif action == "5":
             client.getTopics()
             parentTopic = raw_input("What is the parent topic? \n")
             subtopic = raw_input("What is the subtopic? \n")
             client.createSubtopic(subtopic, parentTopic)
-        elif action == "4":
+        elif action == "6":
             groupName = raw_input("What is the group name? \n")
             client.createGroup(groupName)
-        elif action == "5":
+        elif action == "7":
             client.getGroups()
             groupID = raw_input("What is the group #? \n")
             client.joinGroup(groupID, currentUser)
-        elif action == "6":
+        elif action == "8":
             client.getTopics()
             topicID = raw_input("What is the topic id? \n")
             body = raw_input("What is the post? \n")
             client.createPost(currentUser, topicID, body)
-        elif action == "7":
-            client.getPotentialFriends(currentUser)
-            personID = raw_input("What is the person ID? ")
-            client.addFriend(currentUser, personID)
-        elif action == "8":
-            client.getTopics()
-            topicID = raw_input("What is the topic do you want to follow? ")
-            client.followTopic(currentUser, topicID)
         elif action == "9":
+            client.getPotentialFriends(currentUser)
+            personID = raw_input("What is the person ID? \n")
+            client.addFriend(currentUser, personID)
+        elif action == "10":
+            client.getTopics()
+            topicID = raw_input("What is the topic do you want to follow? \n")
+            client.followTopic(currentUser, topicID)
+        elif action == "11":
             break
         else:
             print "Please enter an appropriate input."
